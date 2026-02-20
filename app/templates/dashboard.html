@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ambulance Routing System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div id="page-container">
+
+    <header id="header">
+        <h1>Emergency Routing System</h1>
+
+        <div id="mode-row">
+            <button id="addressMode" class="mode-btn active">Search Address</button>
+            <button id="mapMode" class="mode-btn">Pick Point on Map</button>
+        </div>
+
+        <div id="search-row">
+            <input
+                id="searchBox"
+                type="text"
+                placeholder="Enter incident address or landmark"
+            />
+        </div>
+    </header>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+    <div id="action-row">
+        <button id="startBtn">Start Routing</button>
+        <button id="liveTrackBtn">Start Live Tracking</button>
+        <button id="clearBtn">Clear</button>
+    </div>
+
+    
+
+</div>
+
+<script src="/static/js/map.js"></script>
+
+<script
+  src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_key }}&libraries=places&callback=initMap"
+  async
+  defer>
+</script>
+
+</body>
+</html>
