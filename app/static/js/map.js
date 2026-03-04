@@ -7,16 +7,39 @@ let routePolyline = null;
 let routePath = [];
 let selectionMode = "address";
 let searchBoxInstance = null;
+let routeInfoDiv = null;
+
 let trackingInterval = null;
+let rerouteInterval = null;
+
 let routeIndex = 0;
+
+let congestionThreshold = 0.45;
 
 const DEFAULT_CENTER = { lat: 13.0814, lng: 80.2200 };
 
 function initMap() {
+
     map = new google.maps.Map(document.getElementById("map"), {
         center: DEFAULT_CENTER,
         zoom: 12
     });
+
+    // Floating ETA panel
+    routeInfoDiv = document.createElement("div");
+    routeInfoDiv.style.background = "rgba(255,255,255,0.95)";
+    routeInfoDiv.style.padding = "12px 16px";
+    routeInfoDiv.style.borderRadius = "12px";
+    routeInfoDiv.style.boxShadow = "0 6px 18px rgba(0,0,0,0.2)";
+    routeInfoDiv.style.fontSize = "14px";
+    routeInfoDiv.style.margin = "16px";
+    routeInfoDiv.style.minWidth = "230px";
+    routeInfoDiv.style.transition = "all 0.3s ease";
+    routeInfoDiv.style.borderLeft = "5px solid #d32f2f";
+    routeInfoDiv.style.display = "none";
+    routeInfoDiv.innerHTML = "";
+
+    map.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(routeInfoDiv);
 
     setupControls();
     setupAddressSearch();
@@ -29,6 +52,7 @@ function initMap() {
 }
 
 function setupControls() {
+
     const addressBtn = document.getElementById("addressMode");
     const mapBtn = document.getElementById("mapMode");
     const searchInput = document.getElementById("searchBox");
@@ -53,20 +77,26 @@ function setupControls() {
 }
 
 function setupAddressSearch() {
+
     const input = document.getElementById("searchBox");
+
     searchBoxInstance = new google.maps.places.SearchBox(input);
 
     searchBoxInstance.addListener("places_changed", () => {
+
         if (selectionMode !== "address") return;
 
         const places = searchBoxInstance.getPlaces();
+
         if (!places || places.length === 0) return;
 
         setIncidentLocation(places[0].geometry.location);
+
     });
 }
 
 function setIncidentLocation(location) {
+
     incidentLatLng = location;
 
     if (incidentMarker) incidentMarker.setMap(null);
@@ -83,6 +113,7 @@ function setIncidentLocation(location) {
 }
 
 function startRouting() {
+
     if (!incidentLatLng) {
         alert("Please select an incident location");
         return;
@@ -90,7 +121,7 @@ function startRouting() {
 
     fetch("/start", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
             latitude: incidentLatLng.lat(),
             longitude: incidentLatLng.lng()
@@ -98,23 +129,11 @@ function startRouting() {
     })
     .then(res => res.json())
     .then(data => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/6c02d037-1a11-4dc9-84cb-d53f9aa46451',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            id:'log_'+Date.now()+'_startRouting_response',
-            timestamp:Date.now(),
-            location:'app/static/js/map.js:startRouting',
-            message:'/start response payload',
-            data:{status:data.status, message:data.message, hasPath:!!data.path},
-            runId:'run1',
-            hypothesisId:'H4'
-          })
-        }).catch(()=>{});
-        // #endregion
 
-        if (!data.path) return;
+        if (!data.path) {
+            alert("Route not found");
+            return;
+        }
 
         routePath = data.path;
 
@@ -137,27 +156,33 @@ function startRouting() {
             title: "Nearest Hospital",
             icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
         });
+
+        // Show ETA info
+        routeInfoDiv.style.display = "block";
+
+        const staticMinutes = Math.round(data.static_time_sec / 60);
+        const predictiveMinutes = Math.round(data.predictive_time_sec / 60);
+        const timeDiff = predictiveMinutes - staticMinutes;
+
+        let diffColor = timeDiff > 0 ? "#d32f2f" : "#2e7d32";
+
+        routeInfoDiv.innerHTML = `
+            <div style="font-weight:600; margin-bottom:6px;">Route Intelligence</div>
+            <div><b>Distance:</b> ${data.distance_km} km</div>
+            <div><b>Static ETA:</b> ${staticMinutes} mins</div>
+            <div><b>Predictive ETA:</b> ${predictiveMinutes} mins</div>
+            <div style="color:${diffColor};"><b>Time Impact:</b> ${timeDiff} mins</div>
+            <div><b>Congestion Score:</b> ${data.congestion_score}</div>
+        `;
+
     })
     .catch(err => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/6c02d037-1a11-4dc9-84cb-d53f9aa46451',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            id:'log_'+Date.now()+'_startRouting_fetch_error',
-            timestamp:Date.now(),
-            location:'app/static/js/map.js:startRouting',
-            message:'fetch /start failed',
-            data:{error:String(err)},
-            runId:'run1',
-            hypothesisId:'H5'
-          })
-        }).catch(()=>{});
-        // #endregion
+        console.error("Routing error:", err);
     });
 }
 
 function startLiveTracking() {
+
     if (!routePath.length) {
         alert("Please generate a route first");
         return;
@@ -172,11 +197,12 @@ function startLiveTracking() {
     ambulanceMarker = new google.maps.Marker({
         position: routePath[0],
         map: map,
-        title: "Ambulance (Live)",
+        title: "Ambulance",
         icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
     });
 
     trackingInterval = setInterval(() => {
+
         routeIndex++;
 
         if (routeIndex >= routePath.length) {
@@ -187,23 +213,103 @@ function startLiveTracking() {
         ambulanceMarker.setPosition(routePath[routeIndex]);
         map.panTo(routePath[routeIndex]);
 
-    }, 1500); // moves every 1.5 seconds
+    }, 1500);
+
+    // START AUTO REROUTE MONITOR
+    startAutoRerouting();
+}
+
+function startAutoRerouting() {
+
+    if (rerouteInterval) clearInterval(rerouteInterval);
+
+    rerouteInterval = setInterval(() => {
+
+        if (!ambulanceMarker || !incidentLatLng) return;
+
+        const currentPos = ambulanceMarker.getPosition();
+
+        fetch("/reroute", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                start: {
+                    lat: currentPos.lat(),
+                    lng: currentPos.lng()
+                },
+                end: {
+                    lat: incidentLatLng.lat(),
+                    lng: incidentLatLng.lng()
+                }
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+
+            if (!data.path) return;
+
+            if (data.congestion_score < congestionThreshold) return;
+
+            console.log("⚠ Congestion detected → Rerouting");
+
+            routePath = data.path;
+
+            if (routePolyline) routePolyline.setMap(null);
+
+            routePolyline = new google.maps.Polyline({
+                path: routePath,
+                geodesic: true,
+                strokeColor: "#ff0000",
+                strokeWeight: 5
+            });
+
+            routePolyline.setMap(map);
+
+        });
+
+    }, 8000);
 }
 
 function clearRoute() {
-    if (trackingInterval) clearInterval(trackingInterval);
 
-    if (routePolyline) routePolyline.setMap(null);
-    if (incidentMarker) incidentMarker.setMap(null);
-    if (hospitalMarker) hospitalMarker.setMap(null);
-    if (ambulanceMarker) ambulanceMarker.setMap(null);
+    if (trackingInterval) {
+        clearInterval(trackingInterval);
+        trackingInterval = null;
+    }
 
-    routePolyline = null;
-    incidentMarker = null;
-    hospitalMarker = null;
-    ambulanceMarker = null;
+    if (rerouteInterval) {
+        clearInterval(rerouteInterval);
+        rerouteInterval = null;
+    }
+
+    if (routePolyline) {
+        routePolyline.setMap(null);
+        routePolyline = null;
+    }
+
+    if (incidentMarker) {
+        incidentMarker.setMap(null);
+        incidentMarker = null;
+    }
+
+    if (hospitalMarker) {
+        hospitalMarker.setMap(null);
+        hospitalMarker = null;
+    }
+
+    if (ambulanceMarker) {
+        ambulanceMarker.setMap(null);
+        ambulanceMarker = null;
+    }
+
     routePath = [];
     incidentLatLng = null;
+    routeIndex = 0;
+
+    if (routeInfoDiv) {
+        routeInfoDiv.style.display = "none";
+        routeInfoDiv.innerHTML = "";
+    }
 
     map.setCenter(DEFAULT_CENTER);
     map.setZoom(12);
