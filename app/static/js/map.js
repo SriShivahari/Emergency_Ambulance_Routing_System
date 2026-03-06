@@ -25,7 +25,6 @@ function initMap() {
         zoom: 12
     });
 
-    // Floating ETA panel
     routeInfoDiv = document.createElement("div");
     routeInfoDiv.style.background = "rgba(255,255,255,0.95)";
     routeInfoDiv.style.padding = "12px 16px";
@@ -157,7 +156,6 @@ function startRouting() {
             icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
         });
 
-        // Show ETA info
         routeInfoDiv.style.display = "block";
 
         const staticMinutes = Math.round(data.static_time_sec / 60);
@@ -201,6 +199,33 @@ function startLiveTracking() {
         icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
     });
 
+    // Check if the browser supports geolocation
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+    }
+
+    // Function to handle geolocation success
+    function success(position) {
+
+        const currentPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+        };
+
+        ambulanceMarker.setPosition(currentPos);
+        map.panTo(currentPos);
+    }
+
+    // Function to handle geolocation errors
+    function error() {
+        alert("Unable to retrieve your location");
+    }
+
+    if (trackingInterval) clearInterval(trackingInterval);
+
+    routeIndex = 0;
+
     trackingInterval = setInterval(() => {
 
         routeIndex++;
@@ -210,13 +235,15 @@ function startLiveTracking() {
             return;
         }
 
-        ambulanceMarker.setPosition(routePath[routeIndex]);
-        map.panTo(routePath[routeIndex]);
+        navigator.geolocation.getCurrentPosition(success, error);
 
-    }, 1500);
+    }, 2000);
 
     // START AUTO REROUTE MONITOR
     startAutoRerouting();
+
+    // Request the user's location
+    navigator.geolocation.getCurrentPosition(success, error);
 }
 
 function startAutoRerouting() {
