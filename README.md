@@ -57,3 +57,5 @@ Ambulance-Routing/
 ├── .env                       # Environment variables
 ├── .gitignore
 └── README.md
+
+Download the requirements.txt file in the virtual environment
