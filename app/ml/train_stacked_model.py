@@ -51,9 +51,6 @@ xgb = XGBRegressor(
     random_state=42,
 )
 
-# -----------------------
-# Proper Stacking (No Leakage)
-# -----------------------
 
 kf = KFold(n_splits=5, shuffle=True, random_state=42)
 meta_features = np.zeros((X_train.shape[0], 2))
@@ -74,7 +71,6 @@ for train_idx, val_idx in kf.split(X_train):
 meta_model = LinearRegression()
 meta_model.fit(meta_features, y_train)
 
-# Retrain base models on full training data
 rf.fit(X_train, y_train)
 xgb.fit(X_train, y_train)
 

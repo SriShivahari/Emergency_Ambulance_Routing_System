@@ -74,7 +74,7 @@ def adjusted_step_time(step):
         # Any ML failure should not break routing; assume moderate congestion
         congestion = 0.5
 
-    adjusted_time = traffic_duration_s * (1.0 + float(congestion))
+    adjusted_time = traffic_duration_s * (1.0 + (float(congestion) * 0.25))
 
     return adjusted_time
 

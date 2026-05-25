@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 
 np.random.seed(42)
-
 records = []
 
 for hour in range(24):
@@ -25,11 +24,7 @@ for hour in range(24):
                     + weekend_factor
                     + np.random.normal(0, 0.05)
                 )
-
                 congestion = max(0, min(1, congestion))
-
-                # Synthetic segment distance in kilometers
-                # Assume typical ambulance segment between 0.5 km and 8 km
                 distance_km = np.random.uniform(0.5, 8.0)
 
                 records.append([
@@ -52,9 +47,6 @@ df = pd.DataFrame(
         "congestion",
     ],
 )
-
 df = df.sample(n=120, random_state=42).reset_index(drop=True)
-
 df.to_csv("traffic_dataset.csv", index=False)
-
 print("Dataset generated: traffic_dataset.csv (120 records)")

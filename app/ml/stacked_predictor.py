@@ -1,4 +1,3 @@
-# app/ml/stacked_predictor.py
 
 import os
 import warnings
@@ -6,14 +5,11 @@ import warnings
 import joblib
 import numpy as np
 
-
-# Load models once
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RF_PATH = os.path.join(BASE_DIR, "rf_model.pkl")
 XGB_PATH = os.path.join(BASE_DIR, "xgb_model.pkl")
 META_PATH = os.path.join(BASE_DIR, "meta_model.pkl")
 
-# Feature order must match train_stacked_model.FEATURE_COLS
 FEATURE_COLS = ["hour", "is_weekend", "avg_speed", "road_type", "distance_km"]
 
 rf = None
@@ -84,7 +80,6 @@ def predict_congestion(hour, is_weekend, avg_speed, road_type, distance_km):
         Congestion score between 0.0 and 1.0.
     """
 
-    # Defensive casting to avoid type errors from bad inputs
     try:
         features = np.array(
             [
@@ -103,15 +98,12 @@ def predict_congestion(hour, is_weekend, avg_speed, road_type, distance_km):
 
     _load_models()
 
-    # Fallback if models are missing – keep the API working
     if rf is None or xgb is None or meta is None:
         return _heuristic_congestion(features[0, 2], int(features[0, 3]))
 
     rf_pred = rf.predict(features)
     xgb_pred = xgb.predict(features)
-
     meta_input = np.column_stack((rf_pred, xgb_pred))
     final_pred = float(meta.predict(meta_input)[0])
-
-    # Clip to valid [0, 1] range
     return max(0.0, min(1.0, final_pred))
+

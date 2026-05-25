@@ -170,7 +170,6 @@ function startRouting() {
             <div><b>Static ETA:</b> ${staticMinutes} mins</div>
             <div><b>Predictive ETA:</b> ${predictiveMinutes} mins</div>
             <div style="color:${diffColor};"><b>Time Impact:</b> ${timeDiff} mins</div>
-            <div><b>Congestion Score:</b> ${data.congestion_score}</div>
         `;
 
     })

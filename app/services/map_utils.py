@@ -12,7 +12,6 @@ def load_hospitals():
     """Load hospital data from CSV file."""
     if not os.path.exists(HOSPITALS_PATH):
         raise FileNotFoundError(f"Hospitals CSV file not found at {HOSPITALS_PATH}")
-    
     hospitals = []
     try:
         with open(HOSPITALS_PATH, newline="", encoding="utf-8") as f:
@@ -25,7 +24,6 @@ def load_hospitals():
                 })
     except (KeyError, ValueError) as e:
         raise ValueError(f"Error parsing hospitals CSV: {e}")
-    
     return hospitals
 
 def haversine_distance(lat1, lon1, lat2, lon2):
@@ -34,7 +32,6 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
-
     a = (
         math.sin(dphi / 2) ** 2
         + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
@@ -44,13 +41,11 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 def get_nearest_hospital(incident_lat, incident_lng):
     """Find the nearest hospital to an incident location."""
     hospitals = load_hospitals()
-
     if not hospitals:
         raise ValueError("No hospitals loaded from CSV")
 
     nearest = None
     min_dist = float("inf")
-
     for hospital in hospitals:
         dist = haversine_distance(
             incident_lat,
@@ -61,7 +56,6 @@ def get_nearest_hospital(incident_lat, incident_lng):
         if dist < min_dist:
             min_dist = dist
             nearest = hospital
-
     return nearest
 
 def decode_polyline(encoded_polyline):
